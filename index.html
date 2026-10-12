@@ -127,6 +127,7 @@
       <div id="detCliente"></div>
     </div>
     <button class="btn" id="btnCheckin" onclick="App.checkin()">✅ Llegué — registrar visita</button>
+    <button class="btn sec oculto" id="btnFijar" onclick="App.corregirUbicacion(false)">📍 Fijar ubicación del cliente aquí</button>
     <button class="btn sec" onclick="App.ir('vInicio')">← Volver</button>
   </section>
 
@@ -187,6 +188,7 @@ const hora = iso => new Date(iso).toLocaleTimeString('es-PY', { hour: '2-digit',
 const fechaCorta = iso => new Date(iso).toLocaleDateString('es-PY', { day: '2-digit', month: '2-digit' });
 const mismoDia = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
 const gs = n => 'Gs. ' + Math.round(n).toLocaleString('es-PY');
+const esPriv = () => !!Local.get('sesion', {}).verViatico;   // Supervisor o Admin
 
 function kmRecta(lat1, lng1, lat2, lng2) {
   const R = 6371, r = x => x * Math.PI / 180;
@@ -286,7 +288,7 @@ async function procesarCola() {
         Local.set('ultimoResumen', Object.assign({ idJornada: item.datos.idJornada }, r.datos));
         App.mostrarResumenSiCorresponde(item.datos.idJornada);
       } else if (item.accion === 'checkin' && r.datos && r.datos.estado === 'Ubicación registrada') {
-        App.marcarClienteUbicado(item.datos.idCliente, item.datos.lat, item.datos.lng);
+        App.ubicLocal(item.datos.idCliente, item.datos.lat, item.datos.lng, 'Pendiente validación');
       }
     }
   } finally { procesando = false; App.pintarSync(); }
@@ -310,6 +312,8 @@ const App = {
     if (Local.get('sesion', null)) {
       this.entrar();
       procesarCola();
+      // Una vez por día baja la lista de clientes actualizada (ubicaciones corregidas, altas, etc.)
+      if (!mismoDia(Local.get('clientesFecha', 0), new Date())) this.actualizarClientes(true);
     } else {
       this.ir('vLogin');
     }
@@ -336,7 +340,7 @@ const App = {
       const r = await llamarAPI('login', {}, { id, pin });
       if (!r.ok) return this.errLogin(r.error);
       const d = r.datos;
-      Local.set('sesion', { id: d.vendedor.id, pin, nombre: d.vendedor.nombre, rol: d.vendedor.rol });
+      Local.set('sesion', { id: d.vendedor.id, pin, nombre: d.vendedor.nombre, rol: d.vendedor.rol, verViatico: !!d.verViatico });
       Local.set('clientes', d.clientes);
       Local.set('config', d.config);
       Local.set('clientesFecha', new Date().toISOString());
@@ -362,17 +366,17 @@ const App = {
     this.ir('vLogin');
   },
 
-  async actualizarClientes() {
-    cargando(true, 'Actualizando clientes…');
+  async actualizarClientes(silencioso) {
+    if (!silencioso) cargando(true, 'Actualizando clientes…');
     try {
       const r = await llamarAPI('clientes', {});
       if (!r.ok) throw new Error(r.error);
       Local.set('clientes', r.datos.clientes);
       Local.set('clientesFecha', new Date().toISOString());
-      toast('✅ Lista actualizada: ' + r.datos.clientes.length + ' clientes');
+      if (!silencioso) toast('✅ Lista actualizada: ' + r.datos.clientes.length + ' clientes');
       if (this.vista === 'vInicio') this.dibujarClientes();
-    } catch (e) { toast('No se pudo actualizar (¿sin señal?). Se usa la lista guardada.'); }
-    finally { cargando(false); }
+    } catch (e) { if (!silencioso) toast('No se pudo actualizar (¿sin señal?). Se usa la lista guardada.'); }
+    finally { if (!silencioso) cargando(false); }
   },
 
   enviarPendientes() { procesarCola(); toast('Enviando pendientes…'); },
@@ -404,7 +408,7 @@ const App = {
       (vieja ? '<div class="aviso warn">Esta jornada es del ' + fechaCorta(j.inicio) + '. Finalízala para empezar la de hoy.</div>' : '') +
       '<div class="kpis"><div class="kpi"><b>' + hora(j.inicio) + '</b><span>Inicio</span></div>' +
       '<div class="kpi"><b>' + visitas.length + '</b><span>Visitas</span></div>' +
-      '<div class="kpi"><b>' + visitas.filter(v => v.estado === 'Válida').length + '</b><span>Válidas</span></div></div>' +
+      '<div class="kpi"><b>' + visitas.filter(v => String(v.estado).indexOf('Válida') === 0).length + '</b><span>Válidas</span></div></div>' +
       '<button class="btn peligro" onclick="App.finalizarJornada()">⏹ Finalizar jornada</button>';
   },
 
@@ -443,6 +447,15 @@ const App = {
 
   pintarResumen(r, j) {
     const visitas = Local.get('visitasHoy', []).filter(v => v.idJornada === (j ? j.id : r.idJornada));
+    if (!Local.get('sesion', {}).verViatico) {
+      // Vendedor: no ve km ni viático (solo Supervisor / Admin)
+      $('detResumen').innerHTML = '<h2>Jornada finalizada</h2>' +
+        '<div class="kpis"><div class="kpi"><b>' + visitas.length + '</b><span>Visitas</span></div>' +
+        '<div class="kpi"><b>' + visitas.filter(v => String(v.estado).indexOf('Válida') === 0).length + '</b><span>Válidas</span></div></div>' +
+        (r ? '<div class="aviso ok">✅ Jornada registrada correctamente.</div>'
+           : '<div class="aviso warn">⏳ Enviando el cierre… Si no tienes señal, se enviará automáticamente cuando vuelva. Abre la app con señal hasta ver "✓ Al día".</div>');
+      return;
+    }
     $('detResumen').innerHTML = '<h2>Resumen de la jornada</h2>' +
       '<div class="kpis"><div class="kpi"><b>' + (r ? r.km : '…') + '</b><span>km</span></div>' +
       '<div class="kpi"><b>' + visitas.length + '</b><span>Visitas</span></div></div>' +
@@ -456,7 +469,7 @@ const App = {
     if (r && r.idJornada === idJornada && Local.get('esperandoResumen', null) === idJornada) {
       Local.del('esperandoResumen');
       if (this.vista === 'vResumen') this.pintarResumen(r);
-      toast('✅ Jornada calculada: ' + r.km + ' km · ' + gs(r.monto), 6000);
+      toast(Local.get('sesion', {}).verViatico ? '✅ Jornada calculada: ' + r.km + ' km · ' + gs(r.monto) : '✅ Jornada registrada', 6000);
     }
   },
 
@@ -502,15 +515,58 @@ const App = {
       (c.lat == null
         ? '<div class="aviso warn">Este cliente aún no tiene ubicación. Al registrar la visita <b>parado en el local</b>, se guardará tu ubicación como la del cliente.</div>'
         : '<a class="link" href="' + mapa + '" target="_blank" rel="noopener">🧭 Cómo llegar (Google Maps)</a>') +
+      (c.estUb === 'Corrección pendiente' ? '<div class="aviso warn">📨 Hay una corrección de ubicación esperando aprobación del supervisor.</div>' : '') +
       (!j ? '<div class="aviso err">Primero inicia tu jornada.</div>' : '');
     $('btnCheckin').disabled = !j;
+    $('btnFijar').classList.toggle('oculto', !esPriv());
     this.ir('vCliente');
   },
 
-  marcarClienteUbicado(idCliente, lat, lng) {
+  /** Actualiza la copia local del cliente (coordenadas y/o estado de ubicación). */
+  ubicLocal(idCliente, lat, lng, estUb) {
     const cs = Local.get('clientes', []);
     const c = cs.find(x => x.id === idCliente);
-    if (c && c.lat == null && lat != null) { c.lat = lat; c.lng = lng; Local.set('clientes', cs); }
+    if (!c) return;
+    if (lat != null && (c.lat == null || estUb === 'Validada')) { c.lat = lat; c.lng = lng; }
+    if (estUb) c.estUb = estUb;
+    Local.set('clientes', cs);
+  },
+
+  /**
+   * Corrige la ubicación del cliente con el GPS actual.
+   *  - Vendedor: se envía como propuesta para que el supervisor la apruebe.
+   *  - Supervisor / Admin: se aplica de inmediato.
+   * desdeVisita = true cuando se usa en una visita "Fuera de rango".
+   */
+  async corregirUbicacion(desdeVisita) {
+    const priv = esPriv();
+    const v = desdeVisita ? Local.get('visitaActual', null) : null;
+    const idCliente = v ? v.idCliente : (this.clienteSel && this.clienteSel.id);
+    const nombre = v ? v.nombre : (this.clienteSel && this.clienteSel.nombre);
+    if (!idCliente) return;
+    if (!confirm('¿Estás parado en la entrada del local de "' + nombre + '"?\n\n' +
+      (priv ? 'La ubicación del cliente se reemplazará por tu ubicación actual.'
+            : 'Tu ubicación actual se enviará a tu supervisor para que apruebe la corrección.'))) return;
+    const p = await gpsConfirmado('la ubicación del cliente');
+    if (!p) return;
+    if (p.lat == null || p.precision > PRECISION_ACEPTABLE_M) {
+      return alert('La señal GPS no es suficientemente precisa' + (p.precision ? ' (±' + p.precision + ' m)' : '') +
+        '. Sal a la vereda frente al local e intenta de nuevo.');
+    }
+    Cola.agregar('proponerUbicacion', { idCliente, idVisita: v ? v.id : null, lat: p.lat, lng: p.lng, precision: p.precision, hora: new Date().toISOString() });
+    if (priv) {
+      this.ubicLocal(idCliente, p.lat, p.lng, 'Validada');
+      if (v) {
+        v.estado = 'Válida (ubicación corregida)'; v.dist = 0; v.correccion = true; Local.set('visitaActual', v);
+        const hoy = Local.get('visitasHoy', []); const e = hoy.find(x => x.idVisita === v.id); if (e) e.estado = v.estado; Local.set('visitasHoy', hoy);
+      }
+      toast('✅ Ubicación del cliente corregida');
+    } else {
+      this.ubicLocal(idCliente, null, null, 'Corrección pendiente');
+      if (v) { v.correccion = true; Local.set('visitaActual', v); }
+      toast('📨 Corrección enviada al supervisor para aprobación', 5000);
+    }
+    if (v) this.pintarVisita(); else this.abrirCliente(idCliente);
   },
 
   /* ---------- Visita ---------- */
@@ -533,9 +589,9 @@ const App = {
 
     const v = { id: nuevoId('V'), idJornada: j.id, idCliente: c.id, nombre: c.nombre, checkin: new Date().toISOString(), estado, dist };
     Local.set('visitaActual', v);
-    const hoy = Local.get('visitasHoy', []); hoy.push({ idJornada: j.id, idCliente: c.id, estado }); Local.set('visitasHoy', hoy);
+    const hoy = Local.get('visitasHoy', []); hoy.push({ idJornada: j.id, idVisita: v.id, idCliente: c.id, estado }); Local.set('visitasHoy', hoy);
     Cola.agregar('checkin', { id: v.id, idJornada: j.id, idCliente: c.id, hora: v.checkin, lat: p.lat, lng: p.lng, precision: p.precision });
-    if (estado === 'Ubicación registrada') this.marcarClienteUbicado(c.id, p.lat, p.lng);
+    if (estado === 'Ubicación registrada') this.ubicLocal(c.id, p.lat, p.lng, 'Pendiente validación');
     this.ir('vVisita');
     this.pintarVisita();
   },
@@ -543,13 +599,19 @@ const App = {
   pintarVisita() {
     const v = Local.get('visitaActual', null);
     if (!v) return this.ir('vInicio');
-    const clase = v.estado === 'Válida' || v.estado === 'Ubicación registrada' ? 'ok' : (v.estado === 'Fuera de rango' ? 'err' : 'warn');
+    const clase = String(v.estado).indexOf('Válida') === 0 || v.estado === 'Ubicación registrada' ? 'ok' : (v.estado === 'Fuera de rango' ? 'err' : 'warn');
     const txt = v.estado === 'Válida' ? '✅ Visita válida (' + v.dist + ' m del cliente)'
+      : v.estado === 'Válida (ubicación corregida)' ? '✅ Visita válida (ubicación del cliente corregida)'
       : v.estado === 'Fuera de rango' ? '❌ Fuera de rango (' + textoDist(v.dist / 1000) + ' del cliente)'
       : v.estado === 'Ubicación registrada' ? '📍 Se guardó la ubicación del cliente (pendiente de validación)'
       : '⚠️ ' + v.estado;
     $('detVisita').innerHTML = '<div style="font-size:19px;font-weight:700">' + esc(v.nombre) + '</div>' +
-      '<p class="muted" style="margin:4px 0">Llegada: ' + hora(v.checkin) + '</p><div class="aviso ' + clase + '">' + txt + '</div>';
+      '<p class="muted" style="margin:4px 0">Llegada: ' + hora(v.checkin) + '</p><div class="aviso ' + clase + '">' + txt + '</div>' +
+      (v.estado === 'Fuera de rango' && !v.correccion
+        ? '<p class="muted" style="margin:8px 0">¿Estás en el local y la ubicación guardada del cliente está mal?</p>' +
+          '<button class="btn sec" onclick="App.corregirUbicacion(true)">📍 ' + (esPriv() ? 'Corregir ubicación del cliente' : 'Informar ubicación correcta') + '</button>'
+        : '') +
+      (v.correccion && v.estado === 'Fuera de rango' ? '<div class="aviso warn">📨 Corrección enviada. Si el supervisor la aprueba, esta visita pasa a válida.</div>' : '');
     if (!$('opcionesResultado').children.length) {
       $('opcionesResultado').innerHTML = RESULTADOS.map((r, i) =>
         '<label class="radio"><input type="radio" name="res" value="' + esc(r) + '" onchange="App.cambioResultado()"> ' + esc(r) + '</label>').join('');
