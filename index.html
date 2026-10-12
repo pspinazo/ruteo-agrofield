@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f43">
+<title>Ruteo Agrofield</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<script src="config.js"></script>
+<style>
+  :root {
+    --verde: #1f6f43; --verde-osc: #154f30; --verde-claro: #e6f2ea;
+    --rojo: #b3261e; --rojo-claro: #fbe9e7; --ambar: #8a5a00; --ambar-claro: #fff4d6;
+    --texto: #1c1f1d; --gris: #5f6662; --borde: #dfe3e0; --fondo: #f5f7f6; --blanco: #fff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--fondo); color: var(--texto);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--verde); color: #fff;
+    padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; font-weight: 600; }
+  header small { display: block; font-weight: 400; opacity: .85; font-size: 13px; }
+  .sync { font-size: 12px; padding: 4px 8px; border-radius: 99px; background: rgba(255,255,255,.18); white-space: nowrap; }
+  .sync.pend { background: #ffcf5c; color: #3d2a00; }
+  .menu-btn { background: none; border: 0; color: #fff; font-size: 22px; padding: 4px 6px; }
+  main { padding: 16px; max-width: 640px; margin: 0 auto; padding-bottom: 80px; }
+  .card { background: var(--blanco); border: 1px solid var(--borde); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; color: var(--gris); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 16px; font-size: 17px; font-weight: 600;
+    background: var(--verde); color: #fff; cursor: pointer; }
+  .btn:active { background: var(--verde-osc); }
+  .btn.sec { background: var(--blanco); color: var(--verde); border: 2px solid var(--verde); }
+  .btn.peligro { background: var(--rojo); }
+  .btn[disabled] { opacity: .5; }
+  .btn + .btn { margin-top: 10px; }
+  label { display: block; font-size: 14px; color: var(--gris); margin: 12px 0 6px; }
+  input, textarea, select { width: 100%; font: inherit; padding: 13px 12px; border: 1px solid var(--borde); border-radius: 10px; background: #fff; }
+  textarea { min-height: 80px; resize: vertical; }
+  .fila { display: flex; gap: 10px; align-items: center; }
+  .kpis { display: flex; gap: 10px; margin-bottom: 12px; }
+  .kpi { flex: 1; background: var(--verde-claro); border-radius: 10px; padding: 10px; text-align: center; }
+  .kpi b { display: block; font-size: 22px; color: var(--verde-osc); }
+  .kpi span { font-size: 12px; color: var(--gris); }
+  .lista { list-style: none; margin: 0; padding: 0; }
+  .lista li { padding: 12px 4px; border-bottom: 1px solid var(--borde); display: flex; gap: 10px; align-items: center; cursor: pointer; }
+  .lista li:last-child { border-bottom: 0; }
+  .lista .info { flex: 1; min-width: 0; }
+  .lista .nom { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lista .dir { font-size: 13px; color: var(--gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag { font-size: 12px; padding: 3px 8px; border-radius: 99px; background: var(--verde-claro); color: var(--verde-osc); white-space: nowrap; }
+  .tag.gris { background: #eceeed; color: var(--gris); }
+  .tag.ok { background: var(--verde); color: #fff; }
+  .aviso { padding: 12px; border-radius: 10px; margin: 10px 0; font-size: 15px; }
+  .aviso.ok { background: var(--verde-claro); color: var(--verde-osc); }
+  .aviso.warn { background: var(--ambar-claro); color: var(--ambar); }
+  .aviso.err { background: var(--rojo-claro); color: var(--rojo); }
+  .radio { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--borde); border-radius: 10px; margin-bottom: 8px; }
+  .radio input { width: 22px; height: 22px; margin: 0; }
+  .timer { font-size: 34px; font-weight: 700; color: var(--verde-osc); text-align: center; margin: 6px 0; font-variant-numeric: tabular-nums; }
+  .oculto { display: none !important; }
+  .muted { color: var(--gris); font-size: 14px; }
+  .link { color: var(--verde); font-weight: 600; text-decoration: none; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: 20px; background: #222; color: #fff; padding: 14px 16px;
+    border-radius: 12px; font-size: 15px; z-index: 50; opacity: 0; transform: translateY(20px); transition: .25s; pointer-events: none; }
+  #toast.ver { opacity: 1; transform: none; }
+  #cargando { position: fixed; inset: 0; background: rgba(255,255,255,.85); z-index: 40; display: flex;
+    align-items: center; justify-content: center; flex-direction: column; gap: 12px; font-weight: 600; color: var(--verde-osc); }
+  .spinner { width: 42px; height: 42px; border: 4px solid var(--verde-claro); border-top-color: var(--verde); border-radius: 50%; animation: g 1s linear infinite; }
+  @keyframes g { to { transform: rotate(360deg); } }
+  #menu { position: fixed; top: 56px; right: 10px; background: #fff; border: 1px solid var(--borde); border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15); z-index: 30; min-width: 230px; overflow: hidden; }
+  #menu button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 14px 16px; font: inherit; border-bottom: 1px solid var(--borde); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="titulo">Ruteo Agrofield<small id="subtitulo">Ingreso</small></h1>
+  <span id="sync" class="sync oculto">✓ Al día</span>
+  <button id="btnMenu" class="menu-btn oculto" aria-label="Menú">⋮</button>
+</header>
+
+<div id="menu" class="oculto">
+  <button onclick="App.actualizarClientes()">🔄 Actualizar lista de clientes</button>
+  <button onclick="App.enviarPendientes()">📤 Enviar pendientes ahora</button>
+  <button onclick="App.verErrores()">⚠️ Ver errores de envío</button>
+  <button onclick="App.cerrarSesion()">🚪 Cerrar sesión</button>
+</div>
+
+<main>
+  <!-- ===================== PANTALLA: LOGIN ===================== -->
+  <section id="vLogin" class="oculto">
+    <div class="card">
+      <h2>Ingresar</h2>
+      <label for="lCodigo">Código de vendedor</label>
+      <input id="lCodigo" autocomplete="username" autocapitalize="characters" placeholder="Ej: V001">
+      <label for="lPin">PIN</label>
+      <input id="lPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4 dígitos">
+      <div id="lError" class="aviso err oculto"></div>
+      <div style="height:14px"></div>
+      <button class="btn" onclick="App.login()">Ingresar</button>
+    </div>
+    <p class="muted">La app registra tu ubicación <b>solo cuando tocas un botón</b> (iniciar jornada, llegar a un cliente, finalizar jornada). Nunca en segundo plano.</p>
+  </section>
+
+  <!-- ===================== PANTALLA: INICIO ===================== -->
+  <section id="vInicio" class="oculto">
+    <div class="card" id="cardJornada"></div>
+
+    <div class="card">
+      <h2>Mis clientes</h2>
+      <div class="fila">
+        <input id="buscar" placeholder="Buscar por nombre, código o dirección" oninput="App.dibujarClientes()">
+      </div>
+      <div style="height:10px"></div>
+      <button class="btn sec" onclick="App.ordenarPorCercania()">📍 Ordenar por cercanía</button>
+      <p id="infoLista" class="muted"></p>
+      <ul id="listaClientes" class="lista"></ul>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA: DETALLE CLIENTE ===================== -->
+  <section id="vCliente" class="oculto">
+    <div class="card">
+      <h2>Cliente</h2>
+      <div id="detCliente"></div>
+    </div>
+    <button class="btn" id="btnCheckin" onclick="App.checkin()">✅ Llegué — registrar visita</button>
+    <button class="btn sec" onclick="App.ir('vInicio')">← Volver</button>
+  </section>
+
+  <!-- ===================== PANTALLA: VISITA EN CURSO ===================== -->
+  <section id="vVisita" class="oculto">
+    <div class="card">
+      <h2>Visita en curso</h2>
+      <div id="detVisita"></div>
+      <div class="timer" id="timer">00:00</div>
+      <p class="muted" style="text-align:center;margin-top:0">tiempo en el cliente</p>
+    </div>
+    <div class="card">
+      <h2>Resultado de la visita</h2>
+      <div id="opcionesResultado"></div>
+      <label for="obs">Observación <span id="obsReq" class="oculto">(obligatoria)</span></label>
+      <textarea id="obs" placeholder="Opcional"></textarea>
+    </div>
+    <button class="btn" onclick="App.checkout()">🏁 Terminar visita</button>
+  </section>
+
+  <!-- ===================== PANTALLA: RESUMEN ===================== -->
+  <section id="vResumen" class="oculto">
+    <div class="card" id="detResumen"></div>
+    <button class="btn" onclick="App.ir('vInicio')">Volver al inicio</button>
+  </section>
+</main>
+
+<div id="toast"></div>
+<div id="cargando" class="oculto"><div class="spinner"></div><div id="cargandoTxt">Cargando…</div></div>
+
+<script>
+/* =====================================================================
+   APP RUTEO AGROFIELD — lógica del celular
+   ===================================================================== */
+const API_URL = (window.APP_CONFIG || {}).API_URL;
+const RESULTADOS = [
+  'Pedido tomado',
+  'Sin pedido – tiene stock',
+  'Sin pedido – no le interesa',
+  'Cliente cerrado',
+  'Solo cobranza',
+  'Otro'
+];
+const PRECISION_ACEPTABLE_M = 100;
+
+/* ---------- Almacenamiento local (sobrevive a cerrar la app) ---------- */
+const Local = {
+  get(k, def) { try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { alert('No se pudo guardar en el celular: ' + e.message); } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+/* ---------- Utilidades ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nuevoId = p => p + '-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+const hora = iso => new Date(iso).toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit', hour12: false });
+const fechaCorta = iso => new Date(iso).toLocaleDateString('es-PY', { day: '2-digit', month: '2-digit' });
+const mismoDia = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+const gs = n => 'Gs. ' + Math.round(n).toLocaleString('es-PY');
+
+function kmRecta(lat1, lng1, lat2, lng2) {
+  const R = 6371, r = x => x * Math.PI / 180;
+  const dLat = r(lat2 - lat1), dLng = r(lng2 - lng1);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function textoDist(km) { return km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km'; }
+
+function toast(msg, ms) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('ver');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('ver'), ms || 3500);
+}
+function cargando(si, txt) { $('cargandoTxt').textContent = txt || 'Cargando…'; $('cargando').classList.toggle('oculto', !si); }
+
+/* ---------- GPS ---------- */
+function leerGPS() {
+  return new Promise((ok, mal) => {
+    if (!navigator.geolocation) return mal(new Error('Este celular no permite usar el GPS en el navegador.'));
+    navigator.geolocation.getCurrentPosition(
+      p => ok({ lat: p.coords.latitude, lng: p.coords.longitude, precision: Math.round(p.coords.accuracy) }),
+      e => mal(new Error(
+        e.code === 1 ? 'Permiso de ubicación denegado. Actívalo: Ajustes de Chrome > Configuración de sitios > Ubicación.' :
+        e.code === 2 ? 'No se pudo obtener la ubicación. Revisa que el GPS esté encendido.' :
+        'El GPS tardó demasiado. Sal a un lugar abierto e intenta de nuevo.')),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  });
+}
+
+/** Pide GPS; si la precisión es mala, ofrece reintentar. Devuelve null si el usuario cancela. */
+async function gpsConfirmado(motivo) {
+  for (;;) {
+    cargando(true, 'Obteniendo ubicación GPS…');
+    let p;
+    try { p = await leerGPS(); }
+    catch (e) {
+      cargando(false);
+      if (confirm(e.message + '\n\n¿Reintentar?')) continue;
+      if (confirm('¿Registrar ' + motivo + ' SIN ubicación? (no recomendado)')) return { lat: null, lng: null, precision: null };
+      return null;
+    }
+    cargando(false);
+    if (p.precision > PRECISION_ACEPTABLE_M &&
+        confirm('La señal GPS es débil (±' + p.precision + ' m).\n\nAceptar = reintentar\nCancelar = usar igual')) continue;
+    return p;
+  }
+}
+
+/* ---------- Comunicación con el servidor ---------- */
+async function llamarAPI(accion, datos, credenciales) {
+  if (!API_URL || API_URL.indexOf('http') !== 0) throw new Error('Falta configurar la URL del servidor en config.js');
+  const s = credenciales || Local.get('sesion', {});
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 90000);
+  try {
+    // Sin encabezado Content-Type a propósito: evita el bloqueo CORS de Apps Script
+    const r = await fetch(API_URL, {
+      method: 'POST', signal: ctrl.signal,
+      body: JSON.stringify({ accion, idVendedor: s.id, pin: s.pin, datos })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* ---------- Cola de envíos (funciona sin señal) ---------- */
+const Cola = {
+  get() { return Local.get('cola', []); },
+  set(c) { Local.set('cola', c); App.pintarSync(); },
+  agregar(accion, datos) {
+    const c = this.get(); c.push({ accion, datos, creado: new Date().toISOString() }); this.set(c);
+    procesarCola();
+  }
+};
+let procesando = false;
+async function procesarCola() {
+  if (procesando) return;
+  procesando = true;
+  App.pintarSync();
+  try {
+    for (;;) {
+      const c = Cola.get();
+      if (!c.length) break;
+      const item = c[0];
+      let r;
+      try { r = await llamarAPI(item.accion, item.datos); }
+      catch (e) { break; }                        // sin conexión: se reintenta después
+      if (!r.ok && r.reintentar) break;           // servidor ocupado: se reintenta después
+      const c2 = Cola.get(); c2.shift(); Cola.set(c2);
+      if (!r.ok) {
+        const errs = Local.get('errores', []);
+        errs.push({ cuando: new Date().toISOString(), accion: item.accion, error: r.error, datos: item.datos });
+        Local.set('errores', errs.slice(-30));
+        toast('⚠️ Un registro no se pudo guardar: ' + r.error, 6000);
+      } else if (item.accion === 'finalizarJornada') {
+        Local.set('ultimoResumen', Object.assign({ idJornada: item.datos.idJornada }, r.datos));
+        App.mostrarResumenSiCorresponde(item.datos.idJornada);
+      } else if (item.accion === 'checkin' && r.datos && r.datos.estado === 'Ubicación registrada') {
+        App.marcarClienteUbicado(item.datos.idCliente, item.datos.lat, item.datos.lng);
+      }
+    }
+  } finally { procesando = false; App.pintarSync(); }
+}
+
+/* ===================================================================== */
+const App = {
+  vista: null,
+  clienteSel: null,
+  posicion: null,     // última posición conocida para ordenar
+  timerId: null,
+
+  init() {
+    $('btnMenu').onclick = e => { e.stopPropagation(); $('menu').classList.toggle('oculto'); };
+    document.addEventListener('click', () => $('menu').classList.add('oculto'));
+    window.addEventListener('online', procesarCola);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) procesarCola(); });
+    setInterval(procesarCola, 30000);
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+    if (Local.get('sesion', null)) {
+      this.entrar();
+      procesarCola();
+    } else {
+      this.ir('vLogin');
+    }
+  },
+
+  ir(vista) {
+    ['vLogin', 'vInicio', 'vCliente', 'vVisita', 'vResumen'].forEach(v => $(v).classList.toggle('oculto', v !== vista));
+    this.vista = vista;
+    const s = Local.get('sesion', null);
+    $('subtitulo').textContent = s ? s.nombre : 'Ingreso';
+    $('btnMenu').classList.toggle('oculto', !s);
+    $('sync').classList.toggle('oculto', !s);
+    if (vista === 'vInicio') { this.pintarJornada(); this.dibujarClientes(); }
+    window.scrollTo(0, 0);
+  },
+
+  /* ---------- Sesión ---------- */
+  async login() {
+    const id = $('lCodigo').value.trim().toUpperCase(), pin = $('lPin').value.trim();
+    $('lError').classList.add('oculto');
+    if (!id || !pin) return this.errLogin('Completa código y PIN.');
+    cargando(true, 'Ingresando…');
+    try {
+      const r = await llamarAPI('login', {}, { id, pin });
+      if (!r.ok) return this.errLogin(r.error);
+      const d = r.datos;
+      Local.set('sesion', { id: d.vendedor.id, pin, nombre: d.vendedor.nombre, rol: d.vendedor.rol });
+      Local.set('clientes', d.clientes);
+      Local.set('config', d.config);
+      Local.set('clientesFecha', new Date().toISOString());
+      if (d.jornadaAbierta && !Local.get('jornada', null)) Local.set('jornada', d.jornadaAbierta);
+      this.entrar();
+    } catch (e) {
+      this.errLogin('No hay conexión con el servidor. Para el primer ingreso necesitas señal. (' + e.message + ')');
+    } finally { cargando(false); }
+  },
+  errLogin(m) { $('lError').textContent = m; $('lError').classList.remove('oculto'); },
+
+  entrar() {
+    if (Local.get('visitaActual', null)) { this.ir('vVisita'); this.pintarVisita(); }
+    else this.ir('vInicio');
+  },
+
+  cerrarSesion() {
+    if (Cola.get().length) return alert('Tienes ' + Cola.get().length + ' registro(s) sin enviar. Conéctate a internet y espera a que se envíen antes de cerrar sesión.');
+    if (Local.get('jornada', null)) return alert('Primero finaliza tu jornada.');
+    if (!confirm('¿Cerrar sesión?')) return;
+    ['sesion', 'clientes', 'config', 'visitasHoy', 'ultimoResumen'].forEach(k => Local.del(k));
+    $('lPin').value = '';
+    this.ir('vLogin');
+  },
+
+  async actualizarClientes() {
+    cargando(true, 'Actualizando clientes…');
+    try {
+      const r = await llamarAPI('clientes', {});
+      if (!r.ok) throw new Error(r.error);
+      Local.set('clientes', r.datos.clientes);
+      Local.set('clientesFecha', new Date().toISOString());
+      toast('✅ Lista actualizada: ' + r.datos.clientes.length + ' clientes');
+      if (this.vista === 'vInicio') this.dibujarClientes();
+    } catch (e) { toast('No se pudo actualizar (¿sin señal?). Se usa la lista guardada.'); }
+    finally { cargando(false); }
+  },
+
+  enviarPendientes() { procesarCola(); toast('Enviando pendientes…'); },
+
+  verErrores() {
+    const errs = Local.get('errores', []);
+    if (!errs.length) return alert('No hay errores de envío. 👍');
+    alert(errs.slice(-10).map(e => fechaCorta(e.cuando) + ' ' + hora(e.cuando) + ' · ' + e.accion + '\n' + e.error).join('\n\n'));
+  },
+
+  pintarSync() {
+    const n = Cola.get().length, el = $('sync');
+    el.classList.toggle('pend', n > 0);
+    el.textContent = n ? (procesando ? '⏳ Enviando ' : '⏳ ') + n + ' pendiente' + (n > 1 ? 's' : '') : '✓ Al día';
+  },
+
+  /* ---------- Jornada ---------- */
+  pintarJornada() {
+    const j = Local.get('jornada', null);
+    const visitas = (Local.get('visitasHoy', [])).filter(v => j && v.idJornada === j.id);
+    const c = $('cardJornada');
+    if (!j) {
+      c.innerHTML = '<h2>Mi jornada</h2><p class="muted">Inicia la jornada cuando salgas a ruta. Se registra tu punto de partida para calcular los km.</p>' +
+        '<button class="btn" onclick="App.iniciarJornada()">▶ Iniciar jornada</button>';
+      return;
+    }
+    const vieja = !mismoDia(j.inicio, new Date());
+    c.innerHTML = '<h2>Mi jornada</h2>' +
+      (vieja ? '<div class="aviso warn">Esta jornada es del ' + fechaCorta(j.inicio) + '. Finalízala para empezar la de hoy.</div>' : '') +
+      '<div class="kpis"><div class="kpi"><b>' + hora(j.inicio) + '</b><span>Inicio</span></div>' +
+      '<div class="kpi"><b>' + visitas.length + '</b><span>Visitas</span></div>' +
+      '<div class="kpi"><b>' + visitas.filter(v => v.estado === 'Válida').length + '</b><span>Válidas</span></div></div>' +
+      '<button class="btn peligro" onclick="App.finalizarJornada()">⏹ Finalizar jornada</button>';
+  },
+
+  async iniciarJornada() {
+    const p = await gpsConfirmado('el inicio de jornada');
+    if (!p) return;
+    const j = { id: nuevoId('J'), inicio: new Date().toISOString() };
+    Local.set('jornada', j);
+    Local.set('visitasHoy', []);
+    Cola.agregar('iniciarJornada', { id: j.id, hora: j.inicio, lat: p.lat, lng: p.lng, precision: p.precision });
+    toast('✅ Jornada iniciada a las ' + hora(j.inicio));
+    this.ir('vInicio');
+  },
+
+  async finalizarJornada() {
+    const j = Local.get('jornada', null);
+    if (!j) return;
+    if (Local.get('visitaActual', null)) return alert('Primero termina la visita en curso.');
+    const vieja = !mismoDia(j.inicio, new Date());
+    let p = { lat: null, lng: null };
+    if (vieja) {
+      // Se olvidó de finalizar ayer: no usamos la ubicación de hoy (agregaría km falsos)
+      if (!confirm('Se finalizará la jornada del ' + fechaCorta(j.inicio) + ' sin punto final (los km se cuentan hasta la última visita). ¿Continuar?')) return;
+    } else {
+      if (!confirm('¿Finalizar la jornada? Se registrará tu ubicación actual como punto final.')) return;
+      p = await gpsConfirmado('el fin de jornada');
+      if (!p) return;
+    }
+    const fin = vieja ? new Date(new Date(j.inicio).setHours(23, 59, 0, 0)).toISOString() : new Date().toISOString();
+    Cola.agregar('finalizarJornada', { idJornada: j.id, hora: fin, lat: p.lat, lng: p.lng });
+    Local.del('jornada');
+    Local.set('esperandoResumen', j.id);
+    this.pintarResumen(null, j);
+    this.ir('vResumen');
+  },
+
+  pintarResumen(r, j) {
+    const visitas = Local.get('visitasHoy', []).filter(v => v.idJornada === (j ? j.id : r.idJornada));
+    $('detResumen').innerHTML = '<h2>Resumen de la jornada</h2>' +
+      '<div class="kpis"><div class="kpi"><b>' + (r ? r.km : '…') + '</b><span>km</span></div>' +
+      '<div class="kpi"><b>' + visitas.length + '</b><span>Visitas</span></div></div>' +
+      '<div class="kpi" style="margin-bottom:10px"><b>' + (r ? gs(r.monto) : '…') + '</b><span>Viático estimado</span></div>' +
+      (r ? '<div class="aviso ok">✅ Jornada cerrada y calculada.</div>'
+         : '<div class="aviso warn">⏳ Calculando km con Google Maps… Si no tienes señal, se calculará automáticamente cuando vuelva.</div>');
+  },
+
+  mostrarResumenSiCorresponde(idJornada) {
+    const r = Local.get('ultimoResumen', null);
+    if (r && r.idJornada === idJornada && Local.get('esperandoResumen', null) === idJornada) {
+      Local.del('esperandoResumen');
+      if (this.vista === 'vResumen') this.pintarResumen(r);
+      toast('✅ Jornada calculada: ' + r.km + ' km · ' + gs(r.monto), 6000);
+    }
+  },
+
+  /* ---------- Lista de clientes ---------- */
+  async ordenarPorCercania() {
+    cargando(true, 'Obteniendo ubicación…');
+    try { this.posicion = await leerGPS(); toast('Ordenado por cercanía (±' + this.posicion.precision + ' m)'); }
+    catch (e) { toast(e.message, 5000); }
+    finally { cargando(false); this.dibujarClientes(); }
+  },
+
+  dibujarClientes() {
+    const q = $('buscar').value.trim().toLowerCase();
+    const visitados = new Set(Local.get('visitasHoy', []).map(v => v.idCliente));
+    let lista = Local.get('clientes', []).map(c => Object.assign({}, c, {
+      dist: (this.posicion && c.lat != null) ? kmRecta(this.posicion.lat, this.posicion.lng, c.lat, c.lng) : null
+    }));
+    if (q) lista = lista.filter(c => (c.nombre + ' ' + c.id + ' ' + c.dir + ' ' + c.ciudad).toLowerCase().indexOf(q) >= 0);
+    if (this.posicion) lista.sort((a, b) => (a.dist == null) - (b.dist == null) || a.dist - b.dist);
+    else lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const total = lista.length, MAX = 80;
+    $('infoLista').textContent = total + ' cliente(s)' + (total > MAX ? ' · mostrando ' + MAX + ', usa el buscador' : '');
+    $('listaClientes').innerHTML = lista.slice(0, MAX).map(c =>
+      '<li data-id="' + esc(c.id) + '" onclick="App.abrirCliente(this.dataset.id)">' +
+        '<div class="info"><div class="nom">' + (visitados.has(c.id) ? '✔️ ' : '') + esc(c.nombre) + '</div>' +
+        '<div class="dir">' + esc(c.id) + ' · ' + esc(c.dir) + (c.ciudad ? ', ' + esc(c.ciudad) : '') + '</div></div>' +
+        (c.lat == null ? '<span class="tag gris">Sin ubicación</span>'
+                       : (c.dist != null ? '<span class="tag">' + textoDist(c.dist) + '</span>' : '')) +
+      '</li>').join('') || '<li class="muted">No hay clientes que coincidan.</li>';
+  },
+
+  abrirCliente(id) {
+    const c = Local.get('clientes', []).find(x => x.id === id);
+    if (!c) return;
+    this.clienteSel = c;
+    const j = Local.get('jornada', null);
+    const mapa = c.lat != null ? 'https://www.google.com/maps/dir/?api=1&destination=' + c.lat + ',' + c.lng : null;
+    $('detCliente').innerHTML =
+      '<div style="font-size:19px;font-weight:700">' + esc(c.nombre) + '</div>' +
+      '<p class="muted" style="margin:4px 0 10px">Código ' + esc(c.id) + (c.canal ? ' · ' + esc(c.canal) : '') + '</p>' +
+      '<p style="margin:0 0 8px">📍 ' + esc(c.dir) + (c.ciudad ? ', ' + esc(c.ciudad) : '') + '</p>' +
+      (c.marcas && c.marcas.length ? '<p style="margin:0 0 8px">🏷️ ' + c.marcas.map(esc).join(', ') + '</p>' : '') +
+      (c.lat == null
+        ? '<div class="aviso warn">Este cliente aún no tiene ubicación. Al registrar la visita <b>parado en el local</b>, se guardará tu ubicación como la del cliente.</div>'
+        : '<a class="link" href="' + mapa + '" target="_blank" rel="noopener">🧭 Cómo llegar (Google Maps)</a>') +
+      (!j ? '<div class="aviso err">Primero inicia tu jornada.</div>' : '');
+    $('btnCheckin').disabled = !j;
+    this.ir('vCliente');
+  },
+
+  marcarClienteUbicado(idCliente, lat, lng) {
+    const cs = Local.get('clientes', []);
+    const c = cs.find(x => x.id === idCliente);
+    if (c && c.lat == null && lat != null) { c.lat = lat; c.lng = lng; Local.set('clientes', cs); }
+  },
+
+  /* ---------- Visita ---------- */
+  async checkin() {
+    const c = this.clienteSel, j = Local.get('jornada', null);
+    if (!c || !j) return;
+    if (Local.get('visitaActual', null)) return alert('Ya tienes una visita en curso.');
+    const p = await gpsConfirmado('la visita');
+    if (!p) return;
+    const cfg = Local.get('config', { radio: 200 });
+    let estado = 'Sin ubicación cliente', dist = null;
+    if (p.lat == null) estado = 'Sin GPS';
+    else if (c.lat != null) {
+      dist = Math.round(kmRecta(p.lat, p.lng, c.lat, c.lng) * 1000);
+      estado = dist <= cfg.radio ? 'Válida' : 'Fuera de rango';
+    } else if (p.precision <= PRECISION_ACEPTABLE_M) estado = 'Ubicación registrada';
+
+    if (estado === 'Fuera de rango' &&
+        !confirm('Estás a ' + textoDist(dist / 1000) + ' del cliente (máximo ' + cfg.radio + ' m).\n\nLa visita quedará marcada "Fuera de rango". ¿Registrar igual?')) return;
+
+    const v = { id: nuevoId('V'), idJornada: j.id, idCliente: c.id, nombre: c.nombre, checkin: new Date().toISOString(), estado, dist };
+    Local.set('visitaActual', v);
+    const hoy = Local.get('visitasHoy', []); hoy.push({ idJornada: j.id, idCliente: c.id, estado }); Local.set('visitasHoy', hoy);
+    Cola.agregar('checkin', { id: v.id, idJornada: j.id, idCliente: c.id, hora: v.checkin, lat: p.lat, lng: p.lng, precision: p.precision });
+    if (estado === 'Ubicación registrada') this.marcarClienteUbicado(c.id, p.lat, p.lng);
+    this.ir('vVisita');
+    this.pintarVisita();
+  },
+
+  pintarVisita() {
+    const v = Local.get('visitaActual', null);
+    if (!v) return this.ir('vInicio');
+    const clase = v.estado === 'Válida' || v.estado === 'Ubicación registrada' ? 'ok' : (v.estado === 'Fuera de rango' ? 'err' : 'warn');
+    const txt = v.estado === 'Válida' ? '✅ Visita válida (' + v.dist + ' m del cliente)'
+      : v.estado === 'Fuera de rango' ? '❌ Fuera de rango (' + textoDist(v.dist / 1000) + ' del cliente)'
+      : v.estado === 'Ubicación registrada' ? '📍 Se guardó la ubicación del cliente (pendiente de validación)'
+      : '⚠️ ' + v.estado;
+    $('detVisita').innerHTML = '<div style="font-size:19px;font-weight:700">' + esc(v.nombre) + '</div>' +
+      '<p class="muted" style="margin:4px 0">Llegada: ' + hora(v.checkin) + '</p><div class="aviso ' + clase + '">' + txt + '</div>';
+    if (!$('opcionesResultado').children.length) {
+      $('opcionesResultado').innerHTML = RESULTADOS.map((r, i) =>
+        '<label class="radio"><input type="radio" name="res" value="' + esc(r) + '" onchange="App.cambioResultado()"> ' + esc(r) + '</label>').join('');
+    }
+    clearInterval(this.timerId);
+    const tick = () => {
+      const s = Math.max(0, Math.floor((Date.now() - new Date(v.checkin)) / 1000));
+      const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+      $('timer').textContent = (h ? h + ':' : '') + String(m).padStart(2, '0') + ':' + String(ss).padStart(2, '0');
+    };
+    tick(); this.timerId = setInterval(tick, 1000);
+  },
+
+  cambioResultado() {
+    const sel = document.querySelector('input[name=res]:checked');
+    const otro = sel && sel.value === 'Otro';
+    $('obsReq').classList.toggle('oculto', !otro);
+    $('obs').placeholder = otro ? 'Describe qué pasó' : 'Opcional';
+  },
+
+  checkout() {
+    const v = Local.get('visitaActual', null);
+    if (!v) return;
+    const sel = document.querySelector('input[name=res]:checked');
+    const obs = $('obs').value.trim();
+    if (!sel) return alert('Elige el resultado de la visita.');
+    if (sel.value === 'Otro' && !obs) return alert('Con "Otro" la observación es obligatoria.');
+    Cola.agregar('checkout', { idVisita: v.id, hora: new Date().toISOString(), resultado: sel.value, observacion: obs });
+    clearInterval(this.timerId);
+    Local.del('visitaActual');
+    sel.checked = false; $('obs').value = ''; this.cambioResultado();
+    toast('✅ Visita registrada: ' + v.nombre);
+    $('buscar').value = '';
+    this.ir('vInicio');
+  }
+};
+
+App.init();
+</script>
+</body>
+</html>
