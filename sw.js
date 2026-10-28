@@ -1,7 +1,8 @@
 // Service worker: guarda la app en el celular para que abra aunque no haya señal.
 // Si cambias index.html o config.js, sube el número de versión para forzar la actualización.
-const CACHE = 'ruteo-v1';
-const ARCHIVOS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'ruteo-v4';
+const ARCHIVOS = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png',
+                  './fonts/public-sans.woff2', './fonts/plex-mono-500.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)));

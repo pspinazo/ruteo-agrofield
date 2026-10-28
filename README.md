@@ -58,7 +58,8 @@ App web para registrar el **ruteo diario de los vendedores mayoristas** de Venta
 |---|---|---|---|
 | Clientes en la app | Solo los asignados | Los de su canal | Todos |
 | Cantidad de visitas | ✅ | ✅ | ✅ |
-| Km y viático | ❌ | ✅ (su equipo, en su planilla) | ✅ (todo, en la central) |
+| Historial de visitas de la jornada | ✅ | ✅ | ✅ |
+| Km y consumo | ❌ | ✅ (al cerrar su jornada y de su equipo, en su planilla) | ✅ (todo, en la central) |
 | Corregir ubicación de un cliente | Propone (requiere aprobación) | Corrige directo / aprueba | Corrige directo / aprueba |
 | Alta, baja y PIN de vendedores | ❌ | ✅ (su equipo) | ✅ (todos) |
 
@@ -73,6 +74,7 @@ App web para registrar el **ruteo diario de los vendedores mayoristas** de Venta
 | `sw.js` | GitHub | Guarda la app en el celular para que abra sin señal |
 | `manifest.json` | GitHub | Permite instalar la app con ícono en el celular |
 | `icon-192.png`, `icon-512.png` | GitHub | Íconos |
+| `fonts/` (2 archivos `.woff2`) | GitHub | Tipografías Public Sans e IBM Plex Mono, para que la app se vea igual sin señal |
 | `README.md` | GitHub | Este documento |
 | `Code.gs` | **Apps Script** (dentro de la planilla central) | El servidor. **No hace falta subirlo al repo** |
 
@@ -135,7 +137,7 @@ API_URL: 'https://script.google.com/macros/s/XXXXXXXX/exec',
 ```
 
 ### Paso 9: Publicar la app en GitHub Pages
-1. Sube a este repo: `index.html`, `config.js`, `sw.js`, `manifest.json`, `icon-192.png`, `icon-512.png` y `README.md` (**Add file → Upload files → Commit changes**).
+1. Sube a este repo: `index.html`, `config.js`, `sw.js`, `manifest.json`, `icon-192.png`, `icon-512.png`, `README.md` y la **carpeta `fonts`** completa (**Add file → Upload files**, arrastrando también la carpeta → **Commit changes**).
 2. **Settings → Pages → Branch: `main` / `(root)` → Save**.
 3. En 1 o 2 minutos aparece la URL: `https://USUARIO.github.io/NOMBRE-DEL-REPO/`.
 
@@ -191,13 +193,16 @@ El supervisor necesita una **cuenta de Google con su correo de Outlook**. No hac
 ### Vendedor
 | Acción | Cómo |
 |---|---|
-| Empezar el día | **▶ Iniciar jornada** (al salir a ruta) |
-| Buscar un cliente | Buscador, o **📍 Ordenar por cercanía** |
-| Llegar al cliente | Ficha del cliente → **✅ Llegué — registrar visita** |
+| Empezar el día | Pestaña **Hoy** → **Iniciar jornada** (al salir a ruta) |
+| Ver clientes cercanos | **Hoy → Más cerca de ti**, o **Clientes → Más cerca**. Las distancias se calculan con la última ubicación registrada; **Actualizar** la renueva (no se envía al servidor) |
+| Buscar un cliente | Pestaña **Clientes** → buscador, orden **Más cerca** o **A – Z** |
+| Llegar al cliente | Tocar el cliente → **Llegué — registrar visita**. La pantalla de GPS muestra precisión y distancia antes de abrir la visita |
 | Ir hasta el cliente | Ficha → **🧭 Cómo llegar** (abre Google Maps) |
-| Terminar la visita | Elegir resultado → **🏁 Terminar visita** ("Otro" exige observación) |
+| Terminar la visita | Elegir resultado → **Terminar visita** ("Otro" exige observación) |
+| Revisar el día | Pestaña **Historial**: visitas de la jornada con hora, resultado, minutos y estado. Filtros **Todas / Válidas / Con alerta** (Fuera de rango, Sin GPS, Ubicación registrada, Sin ubicación del cliente) |
+| Menú (actualizar clientes, pendientes, errores, cerrar sesión) | Tocar el **círculo con las iniciales**, arriba a la derecha |
 | La ubicación del cliente está mal | En una visita "Fuera de rango" → **📍 Informar ubicación correcta** (parado en la entrada del local) |
-| Terminar el día | **⏹ Finalizar jornada** |
+| Terminar el día | **Hoy → Finalizar jornada**. El cierre muestra visitas, válidas y fuera de rango. Supervisores y Admin ven además los **km registrados** y el **consumo estimado** (km × Gs. 1.400) |
 | Sin señal | Seguir trabajando. Arriba se ve "⏳ N pendientes" |
 | Al volver la señal | **Abrir la app** hasta ver **"✓ Al día"** |
 
@@ -274,7 +279,7 @@ Los cambios aplican desde la siguiente jornada o sincronización.
 
 ### Actualizar la app (`index.html`, etc.)
 1. Sube los archivos modificados al repo.
-2. **Siempre** cambia en `sw.js` el número de versión (`ruteo-v3` → `ruteo-v4`, etc.). Si no, los celulares siguen mostrando la versión guardada.
+2. **Siempre** cambia en `sw.js` el número de versión (`ruteo-v4` → `ruteo-v5`, etc.). Si no, los celulares siguen mostrando la versión guardada.
 3. En el celular: cerrar y abrir la app dos veces.
 
 ### Respaldo
@@ -297,7 +302,7 @@ Los cambios aplican desde la siguiente jornada o sincronización.
 | "No hay conexión con el servidor" al ingresar | Sin señal, o URL `/exec` incorrecta | El primer ingreso requiere señal; abrir la URL `/exec` en el navegador para verificar |
 | "Permiso de ubicación denegado" | Chrome bloqueó el GPS | Chrome → ⋮ → Configuración → Configuración de sitios → Ubicación → permitir el sitio |
 | "Señal GPS débil" | Interior de un edificio | Salir a la vereda y reintentar |
-| "⏳ N pendientes" no baja | Sin señal o servidor ocupado | Con señal: menú ⋮ → **Enviar pendientes ahora**. Ver ⋮ → **Ver errores de envío** |
+| "⏳ N pendientes" no baja | Sin señal o servidor ocupado | Con señal: tocar las iniciales → **Enviar pendientes ahora**. Ver **Ver errores de envío** en el mismo menú |
 | Siempre "Fuera de rango" en un cliente | Coordenadas del ERP incorrectas | "Informar ubicación correcta" → aprobar ([sección 5](#5-uso-diario)) |
 | Km en 0 o muy bajos | Jornada sin inicio o fin, o sin GPS | Revisar la hoja **Tramos** de esa jornada y usar **Recalcular km** |
 | La app muestra una versión vieja | No se cambió la versión de `sw.js` | [Sección 8](#8-mantenimiento-y-actualizaciones) |
