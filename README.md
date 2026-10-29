@@ -73,7 +73,8 @@ App web para registrar el **ruteo diario de los vendedores mayoristas** de Venta
 | `config.js` | GitHub | **Único archivo que se edita:** la URL del servidor |
 | `sw.js` | GitHub | Guarda la app en el celular para que abra sin señal |
 | `manifest.json` | GitHub | Permite instalar la app con ícono en el celular |
-| `icon-192.png`, `icon-512.png` | GitHub | Íconos |
+| `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | GitHub | Ícono de la app: logo de Agrofield con el pin de Ruteo como subíndice (el *maskable* es la versión que Android recorta en círculo o cuadrado) |
+| `logo-ruteo.svg` | GitHub | Logo de la pantalla de ingreso |
 | `fonts/` (2 archivos `.woff2`) | GitHub | Tipografías Public Sans e IBM Plex Mono, para que la app se vea igual sin señal |
 | `README.md` | GitHub | Este documento |
 | `Code.gs` | **Apps Script** (dentro de la planilla central) | El servidor. **No hace falta subirlo al repo** |
@@ -137,7 +138,7 @@ API_URL: 'https://script.google.com/macros/s/XXXXXXXX/exec',
 ```
 
 ### Paso 9: Publicar la app en GitHub Pages
-1. Sube a este repo: `index.html`, `config.js`, `sw.js`, `manifest.json`, `icon-192.png`, `icon-512.png`, `README.md` y la **carpeta `fonts`** completa (**Add file → Upload files**, arrastrando también la carpeta → **Commit changes**).
+1. Sube a este repo: `index.html`, `config.js`, `sw.js`, `manifest.json`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `logo-ruteo.svg`, `README.md` y la **carpeta `fonts`** completa (**Add file → Upload files**, arrastrando también la carpeta → **Commit changes**).
 2. **Settings → Pages → Branch: `main` / `(root)` → Save**.
 3. En 1 o 2 minutos aparece la URL: `https://USUARIO.github.io/NOMBRE-DEL-REPO/`.
 
@@ -279,7 +280,7 @@ Los cambios aplican desde la siguiente jornada o sincronización.
 
 ### Actualizar la app (`index.html`, etc.)
 1. Sube los archivos modificados al repo.
-2. **Siempre** cambia en `sw.js` el número de versión (`ruteo-v4` → `ruteo-v5`, etc.). Si no, los celulares siguen mostrando la versión guardada.
+2. **Siempre** cambia en `sw.js` el número de versión (`ruteo-v5` → `ruteo-v6`, etc.). Si no, los celulares siguen mostrando la versión guardada.
 3. En el celular: cerrar y abrir la app dos veces.
 
 ### Respaldo

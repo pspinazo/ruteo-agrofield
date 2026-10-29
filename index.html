@@ -238,7 +238,7 @@
   .login { background: #fff; overflow-y: auto; }
   .login .caja { flex: 1; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 64px) 24px 28px; gap: 28px;
     max-width: 460px; width: 100%; margin: 0 auto; }
-  .logo { width: 64px; height: 64px; border-radius: 18px; background: var(--verde); display: flex; align-items: center; justify-content: center; }
+  .logo { width: 76px; height: 76px; display: block; margin-left: -6px; }
   .login h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
   .login .sub { font-size: 15px; color: var(--gris); margin-top: 6px; }
   .login .privacidad { margin-top: auto; }
@@ -259,9 +259,7 @@
 <!-- ======================= INGRESO ======================= -->
 <section id="vLogin" class="pantalla login oculto">
   <div class="caja">
-    <div class="logo" aria-hidden="true">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.6A2.6 2.6 0 1 1 12 6.4a2.6 2.6 0 0 1 0 5.2z"/></svg>
-    </div>
+    <img class="logo" src="logo-ruteo.svg" alt="Agrofield · Ruteo" width="76" height="76">
     <div>
       <h1>Ruteo Agrofield</h1>
       <div class="sub">Ingresa con tu código del ERP</div>
@@ -381,7 +379,7 @@
    APP RUTEO AGROFIELD — lógica del celular (diseño 2a)
    ===================================================================== */
 const API_URL = (window.APP_CONFIG || {}).API_URL;
-const APP_VERSION = '2.0.0';   // diseño 2a
+const APP_VERSION = '2.1.0';   // diseño 2a
 const RESULTADOS = ['Pedido tomado', 'Sin pedido – tiene stock', 'Sin pedido – no le interesa', 'Cliente cerrado', 'Solo cobranza', 'Otro'];
 const PRECISION_ACEPTABLE_M = 100;
 const ESTADOS_ALERTA = ['Fuera de rango', 'Sin GPS', 'Ubicación registrada', 'Sin ubicación cliente'];
